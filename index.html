@@ -414,7 +414,7 @@
     <div class="container">
         <div class="header">
             <div class="top-right">
-                <button class="settings-btn" onclick="openSettingsModal()" title="Ayarlar">⚙️</button>
+                <!-- Settings Removed for Auto-Sync -->
             </div>
             <h1>💼 Ödeme Takip Paneli</h1>
             <p>Ocak 2026 Dönemi - Ferit Abi Tablosu</p>
@@ -587,131 +587,64 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>⚙️ Ayarlar</h2>
-                <span class="close" onclick="closeSettingsModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="form-group full-width">
-                    <label>GitHub Personal Access Token (PAT) *</label>
-                    <input type="password" id="githubToken" placeholder="ghp_..." onchange="saveSettings()">
-                    <small style="color: #666;">Verileriniz tarayıcınızda saklanır.</small>
-                </div>
-                <div class="form-group full-width">
-                    <label>GitHub Kullanıcı Adı *</label>
-                    <input type="text" id="githubUser" placeholder="OrnekKullanici" onchange="saveSettings()">
-                </div>
-                <div class="form-group full-width">
-                    <label>Repository (Depo) Adı *</label>
-                    <input type="text" id="githubRepo" placeholder="odeme-takip-data" onchange="saveSettings()">
-                    <small style="color: #666;">Bu isimde boş bir repo oluşturmuş olmalısınız.</small>
-                </div>
-                <div class="form-group full-width">
-                    <label>Veri Dosyası Yolu</label>
-                    <input type="text" id="githubPath" value="data.json" onchange="saveSettings()">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="testConnection()">🔄 Bağlantıyı Test Et</button>
-                <button class="btn btn-success" onclick="closeSettingsModal()">Tamam</button>
-            </div>
-        </div>
-    </div>
+    <!-- Settings Modal Removed -->
 
     <script>
-        // --- GitHub Service ---
+        // --- Vercel Serverless Service ---
         class GitHubService {
             constructor() {
-                this.token = localStorage.getItem('gh_token') || '';
-                this.user = localStorage.getItem('gh_user') || '';
-                this.repo = localStorage.getItem('gh_repo') || '';
-                this.path = localStorage.getItem('gh_path') || 'data.json';
-                this.sha = null; // SHA is required for updating files
-            }
-
-            updateCredentials(token, user, repo, path) {
-                this.token = token;
-                this.user = user;
-                this.repo = repo;
-                this.path = path;
-                localStorage.setItem('gh_token', token);
-                localStorage.setItem('gh_user', user);
-                localStorage.setItem('gh_repo', repo);
-                localStorage.setItem('gh_path', path);
+                this.apiUrl = '/api/sync';
+                this.sha = null;
             }
 
             get isConfigured() {
-                return this.token && this.user && this.repo;
+                return true; // Server handles keys
             }
 
             async loadData() {
-                if (!this.isConfigured) return null;
-
                 updateStatus('🔄 Veriler çekiliyor...', '#ffc107');
                 try {
-                    const url = `https://api.github.com/repos/${this.user}/${this.repo}/contents/${this.path}`;
-                    const response = await fetch(url, {
-                        headers: {
-                            'Authorization': `token ${this.token}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        },
-                        cache: 'no-store'
-                    });
+                    const response = await fetch(`${this.apiUrl}?path=data.json`);
 
                     if (response.status === 404) {
-                        updateStatus('🟢 Yeni dosya oluşturulacak', '#28a745');
-                        return null; // File doesn't exist yet
+                        updateStatus('🟢 Yeni Veri Tabanı', '#28a745');
+                        return null;
                     }
-
-                    if (!response.ok) throw new Error(`GitHub Error: ${response.status}`);
+                    if (!response.ok) throw new Error('API Error');
 
                     const data = await response.json();
                     this.sha = data.sha;
 
-                    // Decode content (base64) specifically handling UTF-8 characters
+                    // GitHub API returns content in base64
                     const content = decodeURIComponent(escape(atob(data.content)));
-                    const parsed = JSON.parse(content);
-
-                    updateStatus('🟢 Bağlandı (Senkronize)', '#28a745');
-                    return parsed;
+                    return JSON.parse(content);
                 } catch (error) {
                     console.error("Load Error:", error);
-                    updateStatus('🔴 Bağlantı Hatası', '#dc3545');
+                    updateStatus('🔴 API Hatası (Vercel)', '#dc3545');
                     return null;
                 }
             }
 
             async saveData(data) {
-                if (!this.isConfigured) return false;
-
                 updateStatus('🔄 Kaydediliyor...', '#17a2b8');
                 try {
                     const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-                    const url = `https://api.github.com/repos/${this.user}/${this.repo}/contents/${this.path}`;
 
-                    const body = {
-                        message: `Update data ${new Date().toISOString()}`,
-                        content: content,
-                        sha: this.sha // Include SHA if we are updating
-                    };
-
-                    const response = await fetch(url, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${this.token}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(body)
+                    const response = await fetch(this.apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            path: 'data.json',
+                            message: `Update ${new Date().toISOString()}`,
+                            content: content,
+                            sha: this.sha
+                        })
                     });
 
-                    if (!response.ok) throw new Error(`Save Error: ${response.status}`);
+                    if (!response.ok) throw new Error('Save Failed');
 
                     const resData = await response.json();
-                    this.sha = resData.content.sha; // Update SHA for next save
-
+                    this.sha = resData.content.sha;
                     updateStatus('🟢 Kaydedildi', '#28a745');
                     return true;
                 } catch (error) {
@@ -722,15 +655,11 @@
             }
 
             async uploadFile(file) {
-                if (!this.isConfigured) return null;
-
                 updateStatus('🔄 Dosya Yükleniyor...', '#17a2b8');
                 try {
                     const timestamp = new Date().getTime();
                     const filename = `uploads/${timestamp}_${file.name}`;
-                    const url = `https://api.github.com/repos/${this.user}/${this.repo}/contents/${filename}`;
 
-                    // Convert file to Base64
                     const toBase64 = file => new Promise((resolve, reject) => {
                         const reader = new FileReader();
                         reader.readAsDataURL(file);
@@ -740,35 +669,44 @@
 
                     const content = await toBase64(file);
 
-                    const body = {
-                        message: `Upload file ${file.name}`,
-                        content: content
-                    };
-
-                    const response = await fetch(url, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${this.token}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(body)
+                    const response = await fetch(this.apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            path: filename,
+                            message: `Upload ${file.name}`,
+                            content: content
+                        })
                     });
 
-                    if (!response.ok) throw new Error(`Upload Error: ${response.status}`);
+                    if (!response.ok) throw new Error('Upload Failed');
 
                     const resData = await response.json();
                     updateStatus('🟢 Dosya Yüklendi', '#28a745');
-                    return resData.content.download_url; // Direct link to file
-
+                    return resData.content.download_url;
                 } catch (error) {
                     console.error("Upload Error:", error);
                     updateStatus('🔴 Dosya Yüklenemedi', '#dc3545');
                     return null;
                 }
             }
+
+            async checkForUpdates() {
+                try {
+                    const response = await fetch(`${this.apiUrl}?path=data.json`);
+                    if (!response.ok) return false;
+                    const data = await response.json();
+                    return data.sha !== this.sha;
+                } catch (e) { return false; }
+            }
         }
 
         const gitHub = new GitHubService();
+
+        // --- Configuration ---
+        const DEFAULT_USER = "gokturk078";
+        const DEFAULT_REPO = "yarrak-tassak";
+        // Token is NOT hardcoded for security. User must enter it once.
 
         // --- Initial Data (Ferit Abi Tablosu) ---
         const DEFAULT_PAYMENTS = [
@@ -800,6 +738,31 @@
             { paymentItem: "MTH FATİH AKALIN CASINO AVANS ÖDEMESİ 2.HAKEDİŞ", companyName: "MTH YAPI IMALAT ENERJI YAZILIM SANAYI TICARET LIMITED SIRKETI", iban: "", workType: "TAŞERON", invoiceStatus: "FATURASIZ", workName: "CASINO", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" }
         ];
 
+        // Auto Sync Logic
+        let syncInterval = null;
+
+        function startAutoSync() {
+            if (syncInterval) clearInterval(syncInterval);
+
+            // Poll every 30 seconds
+            syncInterval = setInterval(async () => {
+                if (!gitHub.isConfigured) return;
+
+                // Silent check
+                updateStatus('🔄 Kontrol ediliyor...', '#17a2b8');
+                const hasUpdates = await gitHub.checkForUpdates();
+
+                if (hasUpdates) {
+                    updateStatus('🟡 Yeni Veri Mevcut! Yenile', '#e0a800');
+                    if (confirm("⚠️ Sunucuda yeni veriler var! Sayfayı yenileyerek güncel verileri çekmek ister misiniz? (Hayır derseniz üzerine yazma riski oluşur)")) {
+                        initApp();
+                    }
+                } else {
+                    updateStatus('🟢 Senkronize', '#28a745');
+                }
+            }, 30000);
+        }
+
         let payments = []; // Will be loaded from GitHub
         let logs = []; // Log history
 
@@ -819,34 +782,26 @@
         }
 
         async function initApp() {
-            // Load settings into inputs
-            document.getElementById('githubToken').value = gitHub.token;
-            document.getElementById('githubUser').value = gitHub.user;
-            document.getElementById('githubRepo').value = gitHub.repo;
-            document.getElementById('githubPath').value = gitHub.path;
+            // Auto Connect (Serverless)
+            updateStatus('🔄 Sunucuya bağlanılıyor...', '#ffc107');
 
-            if (gitHub.isConfigured) {
-                const data = await gitHub.loadData();
-                if (data) {
-                    payments = data.payments || [];
-                    logs = data.logs || [];
-                    if (data.settings && data.settings.currencyRates) {
-                        Object.assign(currencyRates, data.settings.currencyRates);
-                    }
-                    renderTable();
-                } else {
-                    // Start with Default Data if GitHub file is empty/missing
-                    console.log("GitHub file not found, using defaults.");
-                    payments = JSON.parse(JSON.stringify(DEFAULT_PAYMENTS)); // Deep copy
-                    renderTable();
-                    alert("⚠️ İlk yükleme: Varsayılan 26 kayıt yüklendi. Verileri GitHub'a kaydetmek için lütfen bir kez 'Kaydet' yapın.");
+            const data = await gitHub.loadData();
+            if (data) {
+                payments = data.payments || [];
+                logs = data.logs || [];
+                if (data.settings && data.settings.currencyRates) {
+                    Object.assign(currencyRates, data.settings.currencyRates);
                 }
+                renderTable();
+                updateStatus('🟢 Canlı', '#28a745');
+                startAutoSync();
             } else {
-                // Not configured yet - show defaults in background too?
-                console.log("GitHub not configured, using defaults.");
+                console.log("No data found, starting with defaults.");
                 payments = JSON.parse(JSON.stringify(DEFAULT_PAYMENTS));
                 renderTable();
-                openSettingsModal();
+                updateStatus('⚪ Varsayılan Veri', '#6c757d');
+                alert("Hoşgeldiniz! Veri tabanı boş olduğu için varsayılan tablo yüklendi. Değişiklik yaptığınızda otomatik oluşturulacak.");
+                startAutoSync();
             }
         }
 
