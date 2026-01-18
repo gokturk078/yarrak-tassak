@@ -641,9 +641,13 @@
                         })
                     });
 
-                    if (!response.ok) throw new Error('Save Failed');
-
                     const resData = await response.json();
+
+                    if (!response.ok) {
+                        alert(`❌ Kayıt Başarısız!\nHata: ${resData.error || 'Bilinmeyen Hata'}\nDetay: ${JSON.stringify(resData.details || '')}`);
+                        throw new Error(resData.error || 'Save Failed');
+                    }
+
                     this.sha = resData.content.sha;
                     updateStatus('🟢 Kaydedildi', '#28a745');
                     return true;
@@ -679,9 +683,13 @@
                         })
                     });
 
-                    if (!response.ok) throw new Error('Upload Failed');
-
                     const resData = await response.json();
+
+                    if (!response.ok) {
+                        alert(`❌ Dosya Yükleme Hatası!\nHata: ${resData.error || 'Bilinmeyen Hata'}`);
+                        throw new Error('Upload Failed');
+                    }
+
                     updateStatus('🟢 Dosya Yüklendi', '#28a745');
                     return resData.content.download_url;
                 } catch (error) {
