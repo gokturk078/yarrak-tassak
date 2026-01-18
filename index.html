@@ -604,7 +604,7 @@
             async loadData() {
                 updateStatus('🔄 Veriler çekiliyor...', '#ffc107');
                 try {
-                    const response = await fetch(`${this.apiUrl}?path=data.json`);
+                    const response = await fetch(`${this.apiUrl}?path=data.json&t=${new Date().getTime()}`);
 
                     if (response.status === 404) {
                         updateStatus('🟢 Yeni Veri Tabanı', '#28a745');
