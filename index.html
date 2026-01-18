@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ödeme Takip Paneli</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* Added for file input styling */
+        .file-upload-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-upload-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .top-right {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .settings-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .currency-rates {
+            display: flex;
+            gap: 20px;
+            padding: 15px 30px;
+            background: #fff3cd;
+            border-bottom: 2px solid #ffc107;
+            flex-wrap: wrap;
+        }
+
+        .rate-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        .rate-value {
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            padding: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1400px;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 13px;
+        }
+
+        tbody tr {
+            transition: background-color 0.2s;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status-paid {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            max-width: 800px;
+            margin: 50px auto;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.3s;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5em;
+        }
+
+        .close {
+            cursor: pointer;
+            font-size: 28px;
+            font-weight: bold;
+            line-height: 1;
+            transition: transform 0.2s;
+        }
+
+        .close:hover {
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-radius: 0 0 15px 15px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .summary {
+            padding: 20px 30px;
+            background: #e7f3ff;
+            border-top: 2px solid #667eea;
+        }
+
+        .summary h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .summary-item h4 {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .summary-item p {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #212529;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="top-right">
+                <button class="settings-btn" onclick="openSettingsModal()" title="Ayarlar">⚙️</button>
+            </div>
+            <h1>💼 Ödeme Takip Paneli</h1>
+            <p>Ocak 2026 Dönemi - Ferit Abi Tablosu</p>
+            <div id="syncStatus" style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
+                Durum: <span id="connectionState">🔴 Bağlı Değil</span>
+            </div>
+        </div>
+
+        <div class="currency-rates">
+            <div class="rate-item">
+                <span>USD:</span>
+                <span class="rate-value" id="usdRate">₺43.10</span>
+            </div>
+            <div class="rate-item">
+                <span>EUR:</span>
+                <span class="rate-value" id="eurRate">₺50.00</span>
+            </div>
+            <div class="rate-item">
+                <span>STG:</span>
+                <span class="rate-value" id="stgRate">₺57.80</span>
+            </div>
+            <div class="rate-item">
+                <span>STG/EUR:</span>
+                <span class="rate-value">1.16</span>
+            </div>
+            <div class="rate-item">
+                <span>USD/EUR:</span>
+                <span class="rate-value">0.86</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="openAddModal()">➕ Yeni Kayıt Ekle</button>
+            <button class="btn btn-info" onclick="openReportsModal()">📈 Raporlar & Geçmiş</button>
+            <button class="btn btn-success" onclick="exportToExcel()">📊 Excel'e Aktar</button>
+            <div class="file-upload-wrapper">
+                <button class="btn btn-warning">📂 Excel'den Yükle</button>
+                <input type="file" id="excelImportInput" accept=".xlsx, .xls" onchange="importExcel(event)" />
+            </div>
+            <button class="btn btn-info" onclick="updateCurrencyRates()">💱 Kur Güncelle</button>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="🔍 Ara... (Firma, iş adı, ödeme kalemi)"
+                    onkeyup="filterTable()">
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="paymentsTable">
+                <thead>
+                    <tr>
+                        <th>Sıra No</th>
+                        <th>Ödeme Kalemleri</th>
+                        <th>Firma Fatura İsmi</th>
+                        <th>Firma İbanları</th>
+                        <th>İşin Nevi</th>
+                        <th>Fatura Durumu</th>
+                        <th>İşin Adı</th>
+                        <th>Para Birimi</th>
+                        <th>Önceki Dönemden Kalan Borç</th>
+                        <th>Bu Ayki Borç</th>
+                        <th>Toplam Borç</th>
+                        <th>Bu Ay Ödenen</th>
+                        <th>Kalan</th>
+                        <th>Ödeme Durumu</th>
+                        <th>Evrak Yükleme (PDF-JPG)</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary">
+            <h3>📈 Özet Bilgiler</h3>
+            <div class="summary-grid" id="summaryGrid">
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Yeni Ödeme Kaydı</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="paymentForm" class="form-grid">
+                    <input type="hidden" id="editIndex">
+
+                    <div class="form-group">
+                        <label>Ödeme Kalemi *</label>
+                        <input type="text" id="paymentItem" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Firma İsmi *</label>
+                        <input type="text" id="companyName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>İşin Nevi *</label>
+                        <select id="workType" required>
+                            <option value="">Seçiniz</option>
+                            <option value="TAŞERON">TAŞERON</option>
+                            <option value="MALZEME TEDARİĞİ">MALZEME TEDARİĞİ</option>
+                            <option value="NAKLİYE">NAKLİYE</option>
+                            <option value="RESMİ KURUM HARÇLARI">RESMİ KURUM HARÇLARI</option>
+                            <option value="MAKİNE EKİPMAN">MAKİNE EKİPMAN</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fatura Durumu *</label>
+                        <select id="invoiceStatus" required>
+                            <option value="">Seçiniz</option>
+                            <option value="FATURALI">FATURALI</option>
+                            <option value="FATURASIZ">FATURASIZ</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>İşin Adı *</label>
+                        <input type="text" id="workName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Para Birimi *</label>
+                        <select id="currency" required>
+                            <option value="">Seçiniz</option>
+                            <option value="TL">TL</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="STG">STG</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Önceki Dönem Borç</label>
+                        <input type="number" id="previousDebt" step="0.01" value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bu Ay Borç</label>
+                        <input type="number" id="currentDebt" step="0.01" value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bu Ay Ödenen</label>
+                        <input type="number" id="paid" step="0.01" value="0">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Firma İbanları</label>
+                        <input type="text" id="iban" placeholder="TR00 0000 0000 0000 0000 0000 00">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Evrak Yükleme (PDF-JPG)</label>
+                        <input type="file" id="documentInput" accept=".pdf,.jpg,.jpeg,.png">
+                        <small style="color: #666; margin-top: 5px;" id="currentDocLabel"></small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="closeModal()">İptal</button>
+                <button class="btn btn-success" onclick="savePayment()">💾 Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Ayarlar</h2>
+                <span class="close" onclick="closeSettingsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group full-width">
+                    <label>GitHub Personal Access Token (PAT) *</label>
+                    <input type="password" id="githubToken" placeholder="ghp_..." onchange="saveSettings()">
+                    <small style="color: #666;">Verileriniz tarayıcınızda saklanır.</small>
+                </div>
+                <div class="form-group full-width">
+                    <label>GitHub Kullanıcı Adı *</label>
+                    <input type="text" id="githubUser" placeholder="OrnekKullanici" onchange="saveSettings()">
+                </div>
+                <div class="form-group full-width">
+                    <label>Repository (Depo) Adı *</label>
+                    <input type="text" id="githubRepo" placeholder="odeme-takip-data" onchange="saveSettings()">
+                    <small style="color: #666;">Bu isimde boş bir repo oluşturmuş olmalısınız.</small>
+                </div>
+                <div class="form-group full-width">
+                    <label>Veri Dosyası Yolu</label>
+                    <input type="text" id="githubPath" value="data.json" onchange="saveSettings()">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="testConnection()">🔄 Bağlantıyı Test Et</button>
+                <button class="btn btn-success" onclick="closeSettingsModal()">Tamam</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GitHub Service ---
+        class GitHubService {
+            constructor() {
+                this.token = localStorage.getItem('gh_token') || '';
+                this.user = localStorage.getItem('gh_user') || '';
+                this.repo = localStorage.getItem('gh_repo') || '';
+                this.path = localStorage.getItem('gh_path') || 'data.json';
+                this.sha = null; // SHA is required for updating files
+            }
+
+            updateCredentials(token, user, repo, path) {
+                this.token = token;
+                this.user = user;
+                this.repo = repo;
+                this.path = path;
+                localStorage.setItem('gh_token', token);
+                localStorage.setItem('gh_user', user);
+                localStorage.setItem('gh_repo', repo);
+                localStorage.setItem('gh_path', path);
+            }
+
+            get isConfigured() {
+                return this.token && this.user && this.repo;
+            }
+
+            async loadData() {
+                if (!this.isConfigured) return null;
+
+                updateStatus('🔄 Veriler çekiliyor...', '#ffc107');
+                try {
+                    const url = `https://api.github.com/repos/${this.user}/${this.repo}/contents/${this.path}`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `token ${this.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        },
+                        cache: 'no-store'
+                    });
+
+                    if (response.status === 404) {
+                        updateStatus('🟢 Yeni dosya oluşturulacak', '#28a745');
+                        return null; // File doesn't exist yet
+                    }
+
+                    if (!response.ok) throw new Error(`GitHub Error: ${response.status}`);
+
+                    const data = await response.json();
+                    this.sha = data.sha;
+
+                    // Decode content (base64) specifically handling UTF-8 characters
+                    const content = decodeURIComponent(escape(atob(data.content)));
+                    const parsed = JSON.parse(content);
+
+                    updateStatus('🟢 Bağlandı (Senkronize)', '#28a745');
+                    return parsed;
+                } catch (error) {
+                    console.error("Load Error:", error);
+                    updateStatus('🔴 Bağlantı Hatası', '#dc3545');
+                    return null;
+                }
+            }
+
+            async saveData(data) {
+                if (!this.isConfigured) return false;
+
+                updateStatus('🔄 Kaydediliyor...', '#17a2b8');
+                try {
+                    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+                    const url = `https://api.github.com/repos/${this.user}/${this.repo}/contents/${this.path}`;
+
+                    const body = {
+                        message: `Update data ${new Date().toISOString()}`,
+                        content: content,
+                        sha: this.sha // Include SHA if we are updating
+                    };
+
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${this.token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) throw new Error(`Save Error: ${response.status}`);
+
+                    const resData = await response.json();
+                    this.sha = resData.content.sha; // Update SHA for next save
+
+                    updateStatus('🟢 Kaydedildi', '#28a745');
+                    return true;
+                } catch (error) {
+                    console.error("Save Error:", error);
+                    updateStatus('🔴 Kayıt Başarısız', '#dc3545');
+                    return false;
+                }
+            }
+
+            async uploadFile(file) {
+                if (!this.isConfigured) return null;
+
+                updateStatus('🔄 Dosya Yükleniyor...', '#17a2b8');
+                try {
+                    const timestamp = new Date().getTime();
+                    const filename = `uploads/${timestamp}_${file.name}`;
+                    const url = `https://api.github.com/repos/${this.user}/${this.repo}/contents/${filename}`;
+
+                    // Convert file to Base64
+                    const toBase64 = file => new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = error => reject(error);
+                    });
+
+                    const content = await toBase64(file);
+
+                    const body = {
+                        message: `Upload file ${file.name}`,
+                        content: content
+                    };
+
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${this.token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) throw new Error(`Upload Error: ${response.status}`);
+
+                    const resData = await response.json();
+                    updateStatus('🟢 Dosya Yüklendi', '#28a745');
+                    return resData.content.download_url; // Direct link to file
+
+                } catch (error) {
+                    console.error("Upload Error:", error);
+                    updateStatus('🔴 Dosya Yüklenemedi', '#dc3545');
+                    return null;
+                }
+            }
+        }
+
+        const gitHub = new GitHubService();
+
+        // --- Initial Data (Ferit Abi Tablosu) ---
+        const DEFAULT_PAYMENTS = [
+            { paymentItem: "SGK (REPSAM)", companyName: "KEMAL BATMAZOĞLU", iban: "", workType: "RESMİ KURUM HARÇLARI", invoiceStatus: "FATURALI", workName: "GZ", currency: "TL", previousDebt: 565.00, currentDebt: 0, paid: 0, documentName: "" },
+            { paymentItem: "RESMİ MUHASEBE GİDERİ", companyName: "KEMAL BATMAZOĞLU", iban: "", workType: "RESMİ KURUM HARÇLARI", invoiceStatus: "FATURASIZ", workName: "CNN", currency: "TL", previousDebt: 565.00, currentDebt: 0, paid: 0, documentName: "" },
+            { paymentItem: "SGK(CAPRA)", companyName: "ERGÜN DOLMACI & Co.", iban: "", workType: "RESMİ KURUM HARÇLARI", invoiceStatus: "FATURALI", workName: "ASKERİYE", currency: "TL", previousDebt: 565.00, currentDebt: 5000.00, paid: 150000.00, documentName: "fatura.pdf" },
+            { paymentItem: "SU FATURALARI", companyName: "", iban: "", workType: "RESMİ KURUM HARÇLARI", invoiceStatus: "FATURASIZ", workName: "MERİT", currency: "TL", previousDebt: 565.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "ELEKTRİK FATURALARI", companyName: "", iban: "", workType: "RESMİ KURUM HARÇLARI", invoiceStatus: "FATURALI", workName: "BALO", currency: "TL", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "ÖMER DİLMAÇ", companyName: "ÖMER DİLMAÇ", iban: "", workType: "NAKLİYE", invoiceStatus: "FATURASIZ", workName: "KANER", currency: "USD", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "dekont.jpg" },
+            { paymentItem: "ÖMER DİLMAÇ", companyName: "ÖMER DİLMAÇ", iban: "", workType: "NAKLİYE", invoiceStatus: "FATURALI", workName: "GZ", currency: "TL", previousDebt: 25000.00, currentDebt: 154268.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "TDA OTO (Honda & Yaris)", companyName: "DEMİR BAŞ", iban: "", workType: "", invoiceStatus: "FATURASIZ", workName: "GZ", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "ENVER DÜZKAR", companyName: "ENVER DÜZKAR", iban: "", workType: "TAŞERON", invoiceStatus: "FATURALI", workName: "ETKİNLİK MEYDANI", currency: "STG", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "EDİZ METAL", companyName: "KAİZ TRADING LTD", iban: "", workType: "TAŞERON", invoiceStatus: "FATURASIZ", workName: "MUTFAK", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "ALİ ÇELİK (GZ OTEL BLOK DUVAR İŞLERİ)", companyName: "ALİ ÇELİK", iban: "", workType: "TAŞERON", invoiceStatus: "FATURALI", workName: "GZ", currency: "TL", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "KEMAL GÜREŞÇİOĞLU", companyName: "", iban: "", workType: "TAŞERON", invoiceStatus: "FATURASIZ", workName: "İŞÇİ LOJMAN", currency: "EUR", previousDebt: 25000.00, currentDebt: 154268.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "OYTUN YUNAK", companyName: "OYTUN YUNAK", iban: "", workType: "MALZEME TEDARİĞİ", invoiceStatus: "FATURALI", workName: "DOME TAKSİ", currency: "TL", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "CONAK ARD GERME", companyName: "", iban: "", workType: "TAŞERON", invoiceStatus: "FATURASIZ", workName: "GZ", currency: "EUR", previousDebt: 25000.00, currentDebt: 154268.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "EDNA ERSOYOĞLU (İŞÇİ LOJMAN İNCE TEMİZLİK)", companyName: "EDNA ERSOYOĞLU", iban: "", workType: "TAŞERON", invoiceStatus: "FATURASIZ", workName: "", currency: "TL", previousDebt: 25000.00, currentDebt: 154268.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "DAP METAL LTD", companyName: "DAP METAL LTD", iban: "", workType: "TAŞERON", invoiceStatus: "FATURALI", workName: "GZ", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "CAHİT NECİPOĞLU", companyName: "CAHİT NECİPOĞLU", iban: "", workType: "MALZEME TEDARİĞİ", invoiceStatus: "FATURASIZ", workName: "ETKİNLİK MEYDANI", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "HÜDAVERDİ ÇÖYGÜN", companyName: "HÜDAVERDİ ÇÖYGÜN", iban: "", workType: "TAŞERON", invoiceStatus: "FATURASIZ", workName: "ETKİNLİK MEYDANI", currency: "TL", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "ED&NA FORKLİFT VİNÇ", companyName: "", iban: "", workType: "MAKİNE EKİPMAN", invoiceStatus: "FATURALI", workName: "CASINO", currency: "USD", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "MEPAŞ", companyName: "MEPAŞ LTD", iban: "", workType: "MALZEME TEDARİĞİ", invoiceStatus: "FATURASIZ", workName: "CASINO", currency: "USD", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "MEPAŞ", companyName: "MEPAŞ LTD", iban: "", workType: "MALZEME TEDARİĞİ", invoiceStatus: "FATURALI", workName: "CASINO", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "MEPAŞ", companyName: "MEPAŞ LTD", iban: "", workType: "MALZEME TEDARİĞİ", invoiceStatus: "FATURASIZ", workName: "CASINO", currency: "TL", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "ANKASAV", companyName: "ANKASAV SAVUNMA ÇELİK YAPI TURİZM İNŞAAT SANAYİ VE TİCARET LTD", iban: "", workType: "TAŞERON", invoiceStatus: "FATURALI", workName: "MOCK-UP 2. ÜNİTE", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "ANKASAV", companyName: "ANKASAV SAVUNMA ÇELİK YAPI TURİZM İNŞAAT SANAYİ VE TİCARET LTD", iban: "", workType: "TAŞERON", invoiceStatus: "FATURASIZ", workName: "CASINO", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "MTH FATİH AKALIN CASINO FATURA ÖDEMESİ", companyName: "MTH YAPI IMALAT ENERJI YAZILIM SANAYI TICARET LIMITED SIRKETI", iban: "", workType: "TAŞERON", invoiceStatus: "FATURALI", workName: "CASINO", currency: "TL", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" },
+            { paymentItem: "MTH FATİH AKALIN CASINO AVANS ÖDEMESİ 2.HAKEDİŞ", companyName: "MTH YAPI IMALAT ENERJI YAZILIM SANAYI TICARET LIMITED SIRKETI", iban: "", workType: "TAŞERON", invoiceStatus: "FATURASIZ", workName: "CASINO", currency: "EUR", previousDebt: 150000.00, currentDebt: 5000.00, paid: 150000.00, documentName: "" }
+        ];
+
+        let payments = []; // Will be loaded from GitHub
+        let logs = []; // Log history
+
+        // --- End GitHub Service ---
+
+        const currencyRates = {
+            TL: 1.0000,
+            USD: 43.1000,
+            EUR: 50.0000,
+            STG: 57.8000
+        };
+
+        function updateStatus(msg, color) {
+            const el = document.getElementById('connectionState');
+            el.textContent = msg;
+            el.style.color = color;
+        }
+
+        async function initApp() {
+            // Load settings into inputs
+            document.getElementById('githubToken').value = gitHub.token;
+            document.getElementById('githubUser').value = gitHub.user;
+            document.getElementById('githubRepo').value = gitHub.repo;
+            document.getElementById('githubPath').value = gitHub.path;
+
+            if (gitHub.isConfigured) {
+                const data = await gitHub.loadData();
+                if (data) {
+                    payments = data.payments || [];
+                    logs = data.logs || [];
+                    if (data.settings && data.settings.currencyRates) {
+                        Object.assign(currencyRates, data.settings.currencyRates);
+                    }
+                    renderTable();
+                } else {
+                    // Start with Default Data if GitHub file is empty/missing
+                    console.log("GitHub file not found, using defaults.");
+                    payments = JSON.parse(JSON.stringify(DEFAULT_PAYMENTS)); // Deep copy
+                    renderTable();
+                    alert("⚠️ İlk yükleme: Varsayılan 26 kayıt yüklendi. Verileri GitHub'a kaydetmek için lütfen bir kez 'Kaydet' yapın.");
+                }
+            } else {
+                // Not configured yet - show defaults in background too?
+                console.log("GitHub not configured, using defaults.");
+                payments = JSON.parse(JSON.stringify(DEFAULT_PAYMENTS));
+                renderTable();
+                openSettingsModal();
+            }
+        }
+
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            payments.forEach((payment, index) => {
+                const totalDebt = (payment.previousDebt || 0) + (payment.currentDebt || 0);
+                const remaining = totalDebt - (payment.paid || 0);
+                const status = remaining <= 0 ? (remaining < 0 ? 'Alacaklı' : 'Ödendi') : 'Bekliyor';
+                const statusClass = remaining <= 0 ? 'status-paid' : 'status-pending';
+
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${payment.paymentItem || ''}</td>
+                        <td>${payment.companyName || ''}</td>
+                        <td>${payment.iban || ''}</td>
+                        <td>${payment.workType || ''}</td>
+                        <td>${payment.invoiceStatus || ''}</td>
+                        <td>${payment.workName || ''}</td>
+                        <td><strong>${payment.currency || 'TL'}</strong></td>
+                        <td>${formatNumber(payment.previousDebt || 0)}</td>
+                        <td>${formatNumber(payment.currentDebt || 0)}</td>
+                        <td><strong>${formatNumber(totalDebt)}</strong></td>
+                        <td>${formatNumber(payment.paid || 0)}</td>
+                        <td><strong>${formatNumber(remaining)}</strong></td>
+                        <td class="${statusClass}">${status}</td>
+                        <td>${payment.documentName ? `<a href="${payment.documentUrl || '#'}" target="_blank" onclick="if(!this.href.startsWith('http')) alert('Demo dosya: ${payment.documentName}')">📎 ${payment.documentName}</a>` : '-'}</td>
+                        <td class="action-buttons">
+                            <button class="btn btn-warning btn-sm" onclick="editPayment(${index})">✏️</button>
+                            <button class="btn btn-danger btn-sm" onclick="deletePayment(${index})">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            updateSummary();
+        }
+
+        function formatNumber(num) {
+            return new Intl.NumberFormat('tr-TR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(num);
+        }
+
+        function updateSummary() {
+            const summaryGrid = document.getElementById('summaryGrid');
+            summaryGrid.innerHTML = '';
+
+            Object.keys(summary).forEach(currency => {
+                const data = summary[currency];
+                if (data.total > 0) {
+                    summaryGrid.innerHTML += `
+                    < div class="summary-item" >
+                            <h4>${currency} - Toplam Borç</h4>
+                            <p>${formatNumber(data.total)} ${currency}</p>
+                        </div >
+                        <div class="summary-item">
+                            <h4>${currency} - Ödenen</h4>
+                            <p>${formatNumber(data.paid)} ${currency}</p>
+                        </div>
+                        <div class="summary-item">
+                            <h4>${currency} - Kalan</h4>
+                            <p style="color: ${data.remaining > 0 ? '#dc3545' : '#28a745'}">${formatNumber(data.remaining)} ${currency}</p>
+                        </div>
+                `;
+                }
+            });
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = 'Yeni Ödeme Kaydı';
+            document.getElementById('paymentForm').reset();
+            document.getElementById('editIndex').value = '';
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('paymentModal').style.display = 'none';
+        }
+
+        function editPayment(index) {
+            const payment = payments[index];
+            document.getElementById('modalTitle').textContent = 'Ödeme Kaydını Düzenle';
+            document.getElementById('editIndex').value = index;
+            document.getElementById('paymentItem').value = payment.paymentItem || '';
+            document.getElementById('companyName').value = payment.companyName || '';
+            document.getElementById('iban').value = payment.iban || '';
+            document.getElementById('workType').value = payment.workType || '';
+            document.getElementById('invoiceStatus').value = payment.invoiceStatus || '';
+            document.getElementById('workName').value = payment.workName || '';
+            document.getElementById('currency').value = payment.currency || 'TL';
+            document.getElementById('previousDebt').value = payment.previousDebt || 0;
+            document.getElementById('currentDebt').value = payment.currentDebt || 0;
+            document.getElementById('paid').value = payment.paid || 0;
+            document.getElementById('currentDocLabel').textContent = payment.documentName ? `Mevcut: ${payment.documentName} ` : '';
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+
+        async function savePayment() {
+            const editIndex = document.getElementById('editIndex').value;
+            const fileInput = document.getElementById('documentInput');
+
+            // Upload file first if selected
+            let docName = "";
+            let docUrl = "";
+
+            if (editIndex !== '' && payments[editIndex]) {
+                docName = payments[editIndex].documentName;
+                docUrl = payments[editIndex].documentUrl || "";
+            }
+
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                docName = file.name;
+                const uploadedUrl = await gitHub.uploadFile(file);
+                if (uploadedUrl) docUrl = uploadedUrl;
+            }
+
+            const payment = {
+                paymentItem: document.getElementById('paymentItem').value,
+                companyName: document.getElementById('companyName').value,
+                iban: document.getElementById('iban').value,
+                workType: document.getElementById('workType').value,
+                invoiceStatus: document.getElementById('invoiceStatus').value,
+                workName: document.getElementById('workName').value,
+                currency: document.getElementById('currency').value,
+                previousDebt: parseFloat(document.getElementById('previousDebt').value) || 0,
+                currentDebt: parseFloat(document.getElementById('currentDebt').value) || 0,
+                paid: parseFloat(document.getElementById('paid').value) || 0,
+                documentName: docName,
+                documentUrl: docUrl
+            };
+
+            if (editIndex === '') {
+                payments.push(payment);
+            } else {
+                payments[editIndex] = payment;
+            }
+
+            renderTable();
+            closeModal();
+
+            // Sync to GitHub
+            await saveDataToGitHub(editIndex === '' ? "Yeni Kayıt" : "Kayıt Güncelleme", `${payment.companyName} - ${payment.paymentItem}`);
+        }
+
+        async function saveDataToGitHub(action, details) {
+            // Add Log
+            if (action) {
+                logs.unshift({
+                    date: new Date().toLocaleString('tr-TR'),
+                    user: gitHub.user,
+                    action: action,
+                    details: details
+                });
+                // Keep last 50 logs
+                if (logs.length > 50) logs.pop();
+            }
+
+            const fullData = {
+                settings: { currencyRates },
+                payments: payments,
+                logs: logs
+            };
+            await gitHub.saveData(fullData);
+        }
+
+        async function deletePayment(index) {
+            if (confirm('Bu kaydı silmek istediğinizden emin misiniz?')) {
+                const deleted = payments[index];
+                payments.splice(index, 1);
+                renderTable();
+                await saveDataToGitHub("Kayıt Silindi", `${deleted.companyName} - ${deleted.paymentItem}`);
+            }
+        }
+
+        // --- Reports Logic ---
+        function openReportsModal() {
+            document.getElementById('reportsModal').style.display = 'block';
+            renderCharts();
+            renderLogs();
+        }
+
+        function closeReportsModal() {
+            document.getElementById('reportsModal').style.display = 'none';
+        }
+
+        function renderLogs() {
+            const list = document.getElementById('logList');
+            list.innerHTML = '';
+            if (logs.length === 0) {
+                list.innerHTML = '<li style="color:#999; text-align:center;">Henüz işlem kaydı yok.</li>';
+                return;
+            }
+            logs.forEach(log => {
+                list.innerHTML += `<li style="border-bottom:1px solid #ddd; padding:8px 0; font-size:13px;">
+                    <strong>[${log.date}]</strong> 
+                    <span style="color:#667eea">${log.user}</span>: 
+                    <b>${log.action}</b> - ${log.details}
+                </li>`;
+            });
+        }
+
+        let charts = {};
+        function renderCharts() {
+            const ctx1 = document.getElementById('currencyChart').getContext('2d');
+            const ctx2 = document.getElementById('statusChart').getContext('2d');
+
+            // Destroy existing if any
+            if (charts.c1) charts.c1.destroy();
+            if (charts.c2) charts.c2.destroy();
+
+            // Prepare Data 1: Debt by Currency
+            const debtByCurrency = {};
+            payments.forEach(p => {
+                const debt = (p.previousDebt || 0) + (p.currentDebt || 0) - (p.paid || 0);
+                if (debt > 0) {
+                    debtByCurrency[p.currency] = (debtByCurrency[p.currency] || 0) + debt;
+                }
+            });
+
+            charts.c1 = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(debtByCurrency),
+                    datasets: [{
+                        label: 'Para Birimine Göre Kalan Borç',
+                        data: Object.values(debtByCurrency),
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Prepare Data 2: Status Distribution
+            let statusCounts = { 'Ödendi': 0, 'Bekliyor': 0, 'Alacaklı': 0 };
+            payments.forEach(p => {
+                const total = (p.previousDebt || 0) + (p.currentDebt || 0);
+                const remaining = total - (p.paid || 0);
+                const s = remaining <= 0 ? (remaining < 0 ? 'Alacaklı' : 'Ödendi') : 'Bekliyor';
+                statusCounts[s]++;
+            });
+
+            charts.c2 = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statusCounts),
+                    datasets: [{
+                        data: Object.values(statusCounts),
+                        backgroundColor: ['#28a745', '#dc3545', '#17a2b8']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#tableBody tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function updateCurrencyRates() {
+            const usd = prompt('USD Kuru (₺):', currencyRates.USD);
+            const eur = prompt('EUR Kuru (₺):', currencyRates.EUR);
+            const stg = prompt('STG Kuru (₺):', currencyRates.STG);
+
+            if (usd) {
+                currencyRates.USD = parseFloat(usd);
+                document.getElementById('usdRate').textContent = '₺' + usd;
+            }
+            if (eur) {
+                currencyRates.EUR = parseFloat(eur);
+                document.getElementById('eurRate').textContent = '₺' + eur;
+            }
+            if (stg) {
+                currencyRates.STG = parseFloat(stg);
+                document.getElementById('stgRate').textContent = '₺' + stg;
+            }
+
+            alert('Kurlar güncellendi!');
+        }
+
+        function exportToExcel() {
+            // Define headers matching the exact requested structure
+            const headers = [
+                "SIRA NO", "ÖDEME KALEMLERİ", "FİRMA FATURA İSMİ", "FİRMA İBANLARI",
+                "İŞİN NEVİ", "FATURA DURUMU", "İŞİN ADI", "PARA BİRİMİ",
+                "ÖNCEKİ DÖNEMDEN KALAN BORÇ", "BU AYKİ BORÇ", "TOPLAM BOÇ",
+                "BU AY ÖDENEN", "KALAN", "ÖDEME DURUMU", "EVRAK YÜKLEME (PDF-JPG )"
+            ];
+
+            // Map data to rows
+            const rows = payments.map((p, i) => {
+                const total = (p.previousDebt || 0) + (p.currentDebt || 0);
+                const remaining = total - (p.paid || 0);
+                const status = remaining <= 0 ? (remaining < 0 ? 'Alacaklı' : 'Ödendi') : 'Bekliyor';
+                const statusSymbol = remaining <= 0 ? 'ü' : 'x'; // Matching Excel style symbols if needed, or text
+
+                return [
+                    i + 1,
+                    p.paymentItem,
+                    p.companyName,
+                    p.iban,
+                    p.workType,
+                    p.invoiceStatus,
+                    p.workName,
+                    p.currency,
+                    p.previousDebt,
+                    p.currentDebt,
+                    total,
+                    p.paid,
+                    remaining,
+                    statusSymbol,
+                    p.documentName
+                ];
+            });
+
+            // Create workbook and worksheet
+            const wb = XLSX.utils.book_new();
+            const wsData = [headers, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, "OCAK 2026 DÖNEMİ ÖDEMELER");
+
+            // Save file
+            XLSX.writeFile(wb, "odeme_takip_tablosu.xlsx");
+        }
+
+        function importExcel(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+
+                // Get all data as array of arrays
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                // Find the header row (looking for "SIRA NO" or similar)
+                let headerRowIndex = -1;
+                for (let i = 0; i < jsonData.length; i++) {
+                    if (jsonData[i].some(cell => cell && cell.toString().includes("SIRA"))) {
+                        headerRowIndex = i;
+                        break;
+                    }
+                }
+
+                if (headerRowIndex === -1) {
+                    alert("Uygun formatta tablo bulunamadı!");
+                    return;
+                }
+
+                // Process rows after header
+                const newPayments = [];
+                for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row || row.length === 0) continue; // Skip empty rows
+
+                    // Map columns based on fixed index from the provided Excel file structure
+                    // 0: Empty/NaN usually
+                    // 1: SIRA NO
+                    // 2: ÖDEME KALEMLERİ
+                    // 3: FİRMA FATURA İSMİ
+                    // 4: FİRMA İBANLARI
+                    // 5: İŞİN NEVİ
+                    // 6: FATURA DURUMU
+                    // 7: İŞİN ADI
+                    // 8: PARA BİRİMİ
+                    // 9: ÖNCEKİ DÖNEM
+                    // 10: BU AYKİ
+                    // 11: TOPLAM (Calculated usually, but import if needed)
+                    // 12: BU AY ÖDENEN
+                    // 13: KALAN (Calculated)
+                    // 14: DURUM
+                    // 15: EVRAK
+
+                    // Simple check to ensure row has data
+                    if (!row[2] && !row[3]) continue;
+
+                    newPayments.push({
+                        paymentItem: row[2] || "",
+                        companyName: row[3] || "",
+                        iban: row[4] || "",
+                        workType: row[5] || "",
+                        invoiceStatus: row[6] || "",
+                        workName: row[7] || "",
+                        currency: row[8] || "TL",
+                        previousDebt: parseFloat(row[9]) || 0,
+                        currentDebt: parseFloat(row[10]) || 0,
+                        paid: parseFloat(row[12]) || 0,
+                        documentName: row[15] || ""
+                    });
+                }
+
+                if (confirm(`${newPayments.length} kayıt bulundu.Mevcut listenin üzerine yazılsın mı ?`)) {
+                    payments = newPayments;
+                    renderTable();
+                    alert("Tablo başarıyla yüklendi!");
+                }
+                // Reset input
+                document.getElementById('excelImportInput').value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            const modal = document.getElementById('paymentModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        function openSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'block';
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        async function saveSettings() {
+            const token = document.getElementById('githubToken').value;
+            const user = document.getElementById('githubUser').value;
+            const repo = document.getElementById('githubRepo').value;
+            const path = document.getElementById('githubPath').value;
+
+            gitHub.updateCredentials(token, user, repo, path);
+        }
+
+        async function testConnection() {
+            await saveSettings();
+            await initApp();
+        }
+
+        // Initialize table on page load
+        // renderTable(); // Removed, handled by initApp
+        initApp();
+    </script>
+</body>
+
+</html>
