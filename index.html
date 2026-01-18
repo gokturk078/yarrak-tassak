@@ -806,11 +806,15 @@
                 updateStatus('🟢 Canlı', '#28a745');
                 startAutoSync();
             } else {
-                console.log("No data found, starting with defaults.");
+                console.log("No data found, initializing defaults...");
                 payments = JSON.parse(JSON.stringify(DEFAULT_PAYMENTS));
                 renderTable();
-                updateStatus('⚪ Varsayılan Veri', '#6c757d');
-                alert("Hoşgeldiniz! Veri tabanı boş olduğu için varsayılan tablo yüklendi. Değişiklik yaptığınızda otomatik oluşturulacak.");
+
+                // FORCE SAVE IMMEDIATELY to create the file on server
+                updateStatus('🚀 Veritabanı Oluşturuluyor...', '#17a2b8');
+                await saveDataToGitHub("İlk Kurulum", "Otomatik oluşturuldu");
+
+                alert("✅ Kurulum Tamamlandı!\n\nVeritabanı (data.json) GitHub'da oluşturuldu. Artık verileriniz kalıcı olacak ve sayfayı yenileseniz de gitmeyecek.");
                 startAutoSync();
             }
         }
