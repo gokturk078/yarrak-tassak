@@ -701,7 +701,8 @@
 
             async checkForUpdates() {
                 try {
-                    const response = await fetch(`${this.apiUrl}?path=data.json`);
+                    // Add timestamp to bypass browser cache
+                    const response = await fetch(`${this.apiUrl}?path=data.json&t=${new Date().getTime()}`);
                     if (!response.ok) return false;
                     const data = await response.json();
                     return data.sha !== this.sha;
@@ -752,23 +753,24 @@
         function startAutoSync() {
             if (syncInterval) clearInterval(syncInterval);
 
-            // Poll every 30 seconds
+            // Poll every 5 seconds (Fast)
             syncInterval = setInterval(async () => {
-                if (!gitHub.isConfigured) return;
-
-                // Silent check
-                updateStatus('🔄 Kontrol ediliyor...', '#17a2b8');
+                // Silent check - do not update Status text constantly
                 const hasUpdates = await gitHub.checkForUpdates();
 
                 if (hasUpdates) {
-                    updateStatus('🟡 Yeni Veri Mevcut! Yenile', '#e0a800');
-                    if (confirm("⚠️ Sunucuda yeni veriler var! Sayfayı yenileyerek güncel verileri çekmek ister misiniz? (Hayır derseniz üzerine yazma riski oluşur)")) {
-                        initApp();
-                    }
-                } else {
-                    updateStatus('🟢 Senkronize', '#28a745');
+                    // Beep sound (optional) or visual cue
+                    updateStatus('🟡 Yeni Veri Mevcut!', '#e0a800');
+
+                    // Small toast or confirm
+                    // Use a tiny timeout to not block UI thread immediately
+                    setTimeout(() => {
+                        if (confirm("⚠️ BAŞKA BİR CİHAZDA DEĞİŞİKLİK YAPILDI!\n\nVeriler güncellensin mi? (İptal derseniz üzerine yazma riski oluşur)")) {
+                            initApp();
+                        }
+                    }, 100);
                 }
-            }, 30000);
+            }, 5000);
         }
 
         let payments = []; // Will be loaded from GitHub
